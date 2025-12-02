@@ -10,7 +10,10 @@ public class ReportsController : ControllerBase
     }
 
     [HttpPost("generate")]
-    public async Task<IActionResult> GenerateReport([FromQuery] string format, [FromBody] ReportRequest request)
+    public async Task<IActionResult> GenerateReport(
+        [FromQuery] string format,
+        [FromBody] ReportRequest request
+    )
     {
         var result = await _reportService.GenerateReportAsync(format, request);
         return File(result.Content, result.ContentType, result.FileName);

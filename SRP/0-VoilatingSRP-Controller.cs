@@ -1,3 +1,4 @@
+//This controller has three responsibilities: HTTP handling, data access, and object mapping.
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
@@ -13,20 +14,22 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts()
     {
         // Data Access Logic (should be in Repository)
-        var products = await _context.Products
-            .Where(p => p.IsActive)
+        var products = await _context
+            .Products.Where(p => p.IsActive)
             .Include(p => p.Category)
             .ToListAsync();
 
         // Mapping Logic (should be in Mapper)
-        var productDtos = products.Select(p => new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name,
-            Price = p.Price,
-            CategoryName = p.Category.Name,
-            DisplayPrice = $"₹{p.Price:N2}"
-        }).ToList();
+        var productDtos = products
+            .Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Price = p.Price,
+                CategoryName = p.Category.Name,
+                DisplayPrice = $"₹{p.Price:N2}",
+            })
+            .ToList();
 
         return Ok(productDtos);
     }
@@ -35,8 +38,8 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<ProductDto>> GetProduct(int id)
     {
         // Data Access Logic
-        var product = await _context.Products
-            .Include(p => p.Category)
+        var product = await _context
+            .Products.Include(p => p.Category)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (product == null)
@@ -49,7 +52,7 @@ public class ProductsController : ControllerBase
             Name = product.Name,
             Price = product.Price,
             CategoryName = product.Category.Name,
-            DisplayPrice = $"₹{product.Price:N2}"
+            DisplayPrice = $"₹{product.Price:N2}",
         };
 
         return Ok(productDto);
@@ -65,7 +68,7 @@ public class ProductsController : ControllerBase
             Price = createDto.Price,
             CategoryId = createDto.CategoryId,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
         };
 
         // Data Access Logic
@@ -78,9 +81,16 @@ public class ProductsController : ControllerBase
             Id = product.Id,
             Name = product.Name,
             Price = product.Price,
-            DisplayPrice = $"₹{product.Price:N2}"
+            DisplayPrice = $"₹{product.Price:N2}",
         };
 
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, productDto);
     }
 }
+/*
+Problems:
+Controller knows about EF Core queries (data access details)
+Mapping logic duplicated across methods
+Hard to unit test (requires database)
+Any change to mapping or data access requires modifying the controller
+*/

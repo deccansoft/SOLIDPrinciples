@@ -1,3 +1,5 @@
+//Step 1: Create the Repository (Data Access Responsibility)
+
 // Interface
 public interface IProductRepository
 {
@@ -20,16 +22,16 @@ public class ProductRepository : IProductRepository
 
     public async Task<IEnumerable<Product>> GetAllActiveAsync()
     {
-        return await _context.Products
-            .Where(p => p.IsActive)
+        return await _context
+            .Products.Where(p => p.IsActive)
             .Include(p => p.Category)
             .ToListAsync();
     }
 
     public async Task<Product?> GetByIdAsync(int id)
     {
-        return await _context.Products
-            .Include(p => p.Category)
+        return await _context
+            .Products.Include(p => p.Category)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 

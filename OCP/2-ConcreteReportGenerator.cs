@@ -1,4 +1,4 @@
-// PDF Report Generator
+//Step 2: Implement Concrete Report Generators
 public class PdfReportGenerator : IReportGenerator
 {
     public string ReportType => "PDF";

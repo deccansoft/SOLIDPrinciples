@@ -1,4 +1,4 @@
-//Core Code - Never Changes
+//Step 4: Report Service (Core Code - Never Changes)
 public interface IReportService
 {
     Task<ReportResult> GenerateReportAsync(string reportType, ReportRequest request);
@@ -12,7 +12,7 @@ public class ReportResult
     public string FileName { get; set; } = string.Empty;
 }
 
-// ✅ This class NEVER needs modification when adding new report types
+// This class NEVER needs modification when adding new report types
 public class ReportService : IReportService
 {
     private readonly IReportFactory _reportFactory;

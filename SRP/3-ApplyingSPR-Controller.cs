@@ -1,3 +1,4 @@
+//Step 3: Refactored Controller (Only HTTP Handling Responsibility)
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
@@ -23,7 +24,7 @@ public class ProductsController : ControllerBase
     public async Task<ActionResult<ProductDto>> GetProduct(int id)
     {
         var product = await _repository.GetByIdAsync(id);
-        
+
         if (product == null)
             return NotFound();
 
@@ -35,7 +36,7 @@ public class ProductsController : ControllerBase
     {
         var product = _mapper.ToEntity(createDto);
         await _repository.AddAsync(product);
-        
+
         return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, _mapper.ToDto(product));
     }
 
@@ -43,13 +44,13 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> UpdateProduct(int id, UpdateProductDto updateDto)
     {
         var product = await _repository.GetByIdAsync(id);
-        
+
         if (product == null)
             return NotFound();
 
         _mapper.UpdateEntity(product, updateDto);
         await _repository.UpdateAsync(product);
-        
+
         return NoContent();
     }
 

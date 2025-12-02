@@ -1,3 +1,4 @@
+//After: Using Polymorphism for Extension
 public interface IReportGenerator
 {
     string ReportType { get; }

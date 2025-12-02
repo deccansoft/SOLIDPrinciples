@@ -1,3 +1,5 @@
+//Step 2: Create the Mapper (Mapping Responsibility)
+
 // Interface
 public interface IProductMapper
 {
@@ -18,7 +20,7 @@ public class ProductMapper : IProductMapper
             Name = product.Name,
             Price = product.Price,
             CategoryName = product.Category?.Name ?? "Uncategorized",
-            DisplayPrice = $"₹{product.Price:N2}"
+            DisplayPrice = $"₹{product.Price:N2}",
         };
     }
 
@@ -35,7 +37,7 @@ public class ProductMapper : IProductMapper
             Price = createDto.Price,
             CategoryId = createDto.CategoryId,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
         };
     }
 

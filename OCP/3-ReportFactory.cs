@@ -1,3 +1,4 @@
+//Step 3: Create Report Factory (Strategy Pattern)
 public interface IReportFactory
 {
     IReportGenerator GetGenerator(string reportType);

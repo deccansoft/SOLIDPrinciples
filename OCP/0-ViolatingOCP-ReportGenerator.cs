@@ -36,3 +36,9 @@ public class ReportGenerator
         throw new NotImplementedException();
     }
 }
+/*
+Problems:
+Adding new report types requires modifying ReportGenerator
+Risk of breaking existing functionality
+Class grows larger with each new report type
+*/
