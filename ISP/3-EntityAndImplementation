@@ -1,0 +1,241 @@
+// Product entity
+public class Product : IEntity, ISoftDeletable, IAuditable
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public int CategoryId { get; set; }
+    public Category? Category { get; set; }
+    public int StockQuantity { get; set; }
+    
+    // ISoftDeletable
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    
+    // IAuditable
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? ModifiedAt { get; set; }
+    public string? ModifiedBy { get; set; }
+}
+
+// Single implementation that implements all interfaces
+public class ProductRepository : 
+    IQueryRepository<Product>, 
+    IWriteRepository<Product>, 
+    IBulkWriteRepository<Product>,
+    ISoftDeleteRepository<Product>,
+    ISpecificationRepository<Product>
+{
+    private readonly AppDbContext _context;
+    private readonly DbSet<Product> _dbSet;
+
+    public ProductRepository(AppDbContext context)
+    {
+        _context = context;
+        _dbSet = context.Set<Product>();
+    }
+
+    // ===== IReadRepository Implementation =====
+    
+    public async Task<Product?> GetByIdAsync(int id)
+    {
+        return await _dbSet
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
+    }
+
+    public async Task<IEnumerable<Product>> GetAllAsync()
+    {
+        return await _dbSet
+            .Where(p => !p.IsDeleted)
+            .Include(p => p.Category)
+            .ToListAsync();
+    }
+
+    public async Task<bool> ExistsAsync(int id)
+    {
+        return await _dbSet.AnyAsync(p => p.Id == id && !p.IsDeleted);
+    }
+
+    public async Task<int> CountAsync()
+    {
+        return await _dbSet.CountAsync(p => !p.IsDeleted);
+    }
+
+    // ===== IQueryRepository Implementation =====
+    
+    public async Task<IEnumerable<Product>> FindAsync(Expression<Func<Product, bool>> predicate)
+    {
+        return await _dbSet
+            .Where(p => !p.IsDeleted)
+            .Where(predicate)
+            .Include(p => p.Category)
+            .ToListAsync();
+    }
+
+    public async Task<Product?> FirstOrDefaultAsync(Expression<Func<Product, bool>> predicate)
+    {
+        return await _dbSet
+            .Where(p => !p.IsDeleted)
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(predicate);
+    }
+
+    public async Task<PaginatedResult<Product>> GetPagedAsync(
+        int page, 
+        int pageSize,
+        Expression<Func<Product, bool>>? filter = null,
+        Expression<Func<Product, object>>? orderBy = null,
+        bool ascending = true)
+    {
+        var query = _dbSet.Where(p => !p.IsDeleted);
+        
+        if (filter != null)
+            query = query.Where(filter);
+
+        var totalCount = await query.CountAsync();
+
+        if (orderBy != null)
+            query = ascending ? query.OrderBy(orderBy) : query.OrderByDescending(orderBy);
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Include(p => p.Category)
+            .ToListAsync();
+
+        return new PaginatedResult<Product>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    // ===== ISpecificationRepository Implementation =====
+    
+    public async Task<IEnumerable<Product>> FindAsync(ISpecification<Product> specification)
+    {
+        return await ApplySpecification(specification).ToListAsync();
+    }
+
+    public async Task<Product?> FirstOrDefaultAsync(ISpecification<Product> specification)
+    {
+        return await ApplySpecification(specification).FirstOrDefaultAsync();
+    }
+
+    public async Task<int> CountAsync(ISpecification<Product> specification)
+    {
+        return await ApplySpecification(specification).CountAsync();
+    }
+
+    private IQueryable<Product> ApplySpecification(ISpecification<Product> spec)
+    {
+        var query = _dbSet.Where(p => !p.IsDeleted).Where(spec.Criteria);
+
+        query = spec.Includes.Aggregate(query, (current, include) => current.Include(include));
+
+        if (spec.OrderBy != null)
+            query = query.OrderBy(spec.OrderBy);
+        else if (spec.OrderByDescending != null)
+            query = query.OrderByDescending(spec.OrderByDescending);
+
+        if (spec.Skip.HasValue)
+            query = query.Skip(spec.Skip.Value);
+
+        if (spec.Take.HasValue)
+            query = query.Take(spec.Take.Value);
+
+        return query;
+    }
+
+    // ===== IWriteRepository Implementation =====
+    
+    public async Task<Product> AddAsync(Product entity)
+    {
+        entity.CreatedAt = DateTime.UtcNow;
+        await _dbSet.AddAsync(entity);
+        await _context.SaveChangesAsync();
+        return entity;
+    }
+
+    public async Task UpdateAsync(Product entity)
+    {
+        entity.ModifiedAt = DateTime.UtcNow;
+        _dbSet.Update(entity);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(int id)
+    {
+        var entity = await _dbSet.FindAsync(id);
+        if (entity != null)
+        {
+            _dbSet.Remove(entity);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    // ===== IBulkWriteRepository Implementation =====
+    
+    public async Task AddRangeAsync(IEnumerable<Product> entities)
+    {
+        foreach (var entity in entities)
+            entity.CreatedAt = DateTime.UtcNow;
+            
+        await _dbSet.AddRangeAsync(entities);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateRangeAsync(IEnumerable<Product> entities)
+    {
+        foreach (var entity in entities)
+            entity.ModifiedAt = DateTime.UtcNow;
+            
+        _dbSet.UpdateRange(entities);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteRangeAsync(IEnumerable<int> ids)
+    {
+        var entities = await _dbSet.Where(p => ids.Contains(p.Id)).ToListAsync();
+        _dbSet.RemoveRange(entities);
+        await _context.SaveChangesAsync();
+    }
+
+    // ===== ISoftDeleteRepository Implementation =====
+    
+    public async Task SoftDeleteAsync(int id)
+    {
+        var entity = await _dbSet.FindAsync(id);
+        if (entity != null)
+        {
+            entity.IsDeleted = true;
+            entity.DeletedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task RestoreAsync(int id)
+    {
+        var entity = await _dbSet.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.Id == id);
+            
+        if (entity != null)
+        {
+            entity.IsDeleted = false;
+            entity.DeletedAt = null;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task<IEnumerable<Product>> GetDeletedAsync()
+    {
+        return await _dbSet.IgnoreQueryFilters()
+            .Where(p => p.IsDeleted)
+            .ToListAsync();
+    }
+}
